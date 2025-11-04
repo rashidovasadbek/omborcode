@@ -1,0 +1,10 @@
+# .gitignore fayli
+# Virtual muhit papkasini e'tiborsiz qoldirish
+venv/
+*.pyc
+
+# Python tomonidan yaratilgan papkalar
+__pycache__/
+
+# Maxfiy ma'lumotlar fayli (Tokenlar, Parollar)
+.env

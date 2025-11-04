@@ -1,0 +1,7 @@
+CREATE TABLE scan_log(
+ id SERIAL PRIMARY KEY,
+ barcode TEXT UNIQUE NOT NULL,
+ user_id	BIGINT NOT NULL,
+ scanned_at	TIMESTAMP WITH TIME ZONE NOT NULL,
+ session_id	TEXT NOT NULL
+)
