@@ -1,5 +1,3 @@
-# handlers/barcode_handler.py
-
 import datetime
 from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
@@ -10,12 +8,7 @@ from utils.states import ScanStates
 from utils.report_generator import generate_excel_report
 from database.db_manager import DatabaseManager 
 
-# Handlerlarni ro'yxatdan o'tkazish uchun yangi Router
 router = Router()
-
-# =================================================================
-# ASOSIY MANTIQ: SHTRIX KOD QABUL QILISH
-# =================================================================
 
 @router.message(ScanStates.waiting_for_barcode, F.text)
 async def process_barcode(message: types.Message, state: FSMContext, db_manager: DatabaseManager):
