@@ -6,11 +6,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+
 # PostgreSQL ulanish sozlamalari
-PG_HOST = os.getenv("PG_HOST")
-PG_USER = os.getenv("PG_USER")
-PG_PASS = os.getenv("PG_PASS")
-PG_DBNAME = os.getenv("PG_DBNAME")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = int(os.getenv("DB_PORT"))
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASS")
 
 TABLE_NAME = 'scan_log'
 
@@ -19,13 +24,13 @@ class DatabaseManager:
     def __init__(self):
         self.pool = None
         
-    async def create_pool(self):
-        """Asinxron ulanishlar pulini (pool) yaratish."""
+    async def connect(self):
         self.pool = await asyncpg.create_pool(
-            user=PG_USER,
-            password=PG_PASS,
-            host=PG_HOST,
-            database=PG_DBNAME
+            host=DB_HOST,
+            port=DB_PORT,
+            user=DB_USER,
+            password=DB_PASS,
+            database=DB_NAME
         )
         await self.create_table()
         
