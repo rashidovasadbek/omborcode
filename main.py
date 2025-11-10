@@ -4,6 +4,9 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 import os
+from aiogram.client.default import DefaultBotProperties 
+from aiogram.enums.parse_mode import ParseMode
+from aiogram import Bot
 
 # Loyiha modullarini import qilish
 from database.db_manager import DatabaseManager
@@ -37,7 +40,11 @@ async def main():
         return # Xato bo'lsa, botni ishga tushirmaymiz
 
     # 2. Bot va Dispatcher obyektlarini yaratish
-    bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
+    bot = Bot(
+    token=BOT_TOKEN, 
+    # parse_mode o'rniga default ishlatiladi
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML) 
+    )
     # FSMContext ma'lumotlarini xotirada saqlaymiz (MemoryStorage)
     dp = Dispatcher(storage=MemoryStorage())
     
