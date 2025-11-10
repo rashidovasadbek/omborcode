@@ -24,12 +24,12 @@ class DatabaseManager:
     def __init__(self):
         self.pool = None
         
-    async def connect(self):
+    async def create_pool(self):
+        """Asinxron ulanishlar pulini (pool) yaratish."""
         self.pool = await asyncpg.create_pool(
-            host=DB_HOST,
-            port=DB_PORT,
             user=DB_USER,
             password=DB_PASS,
+            host=DB_HOST,
             database=DB_NAME
         )
         await self.create_table()
