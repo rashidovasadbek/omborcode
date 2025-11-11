@@ -1,22 +1,27 @@
 import datetime
-from aiogram import Router, types, F
+from aiogram import Router, types, F, Bot
+from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, BufferedInputFile
 from aiogram.fsm.storage.base import StorageKey
-
+from aiogram.enums.content_type import ContentType
 from utils.states import ScanStates
 from utils.report_generator import generate_excel_report
 from database.db_manager import DatabaseManager 
+from pyzbar.pyzbar import decode 
+from PIL import Image
+from io import BytesIO
+
+import logging
 
 router = Router()
+
+import logging # <<<< ALO HIDA QATORGA QO'SHILADI
 
 @router.message(ScanStates.waiting_for_barcode, F.text)
 async def process_barcode(message: types.Message, state: FSMContext, db_manager: DatabaseManager):
     """
-    Foydalanuvchidan shtrix kodni qabul qiladi.
-    1. Takrorlanmasligini tekshiradi.
-    2. Bazaga saqlaydi.
-    3. Sanashni yakunlash holatini tekshiradi.
+    Foydalanuvchidan shtrix kodni qabul qiladi va Yakunlash/Davom etishni tekshiradi.
     """
     barcode = message.text.strip()
     user_id = message.from_user.id
@@ -27,6 +32,7 @@ async def process_barcode(message: types.Message, state: FSMContext, db_manager:
     session_id = data.get('current_session_id')
 
     if not target_count or not session_id:
+        logging.error(f"FATAL: Target yoki Session ID topilmadi. User: {user_id}") # <<<< YANGI LOG
         await message.answer("❌ Xato! Sessiya ma'lumotlari topilmadi. Iltimos, /start buyrug'i orqali qayta boshlang.")
         await state.clear()
         return
@@ -51,7 +57,7 @@ async def process_barcode(message: types.Message, state: FSMContext, db_manager:
     
     # 4. Yakunlash Cheklovi
     if current_count == target_count:
-        # Sessiya tugadi. Hisobot tugmasini dinamik yaratamiz.
+        logging.info(f"YAKUNLASH: Sessiya ({session_id[:8]}...) tugadi. Soni: {target_count}") # <<<< LOG QO'SHILDI
         
         # Tugmani yaratishda session_id ni callback_data ichiga joylashtirish (MUHIM!)
         report_data = f"generate_report:{session_id}" 
@@ -73,6 +79,7 @@ async def process_barcode(message: types.Message, state: FSMContext, db_manager:
         # Sanash tugagani uchun FSM holatini tozalaymiz.
         await state.clear() 
     else:
+        logging.info(f"DAVOM ETISH: Sessiya ({session_id[:8]}...) davom etmoqda. Joriy soni: {current_count}/{target_count}") # <<<< LOG QO'SHILDI
         # Sanash davom etmoqda
         remaining = target_count - current_count
         await message.answer(
@@ -81,7 +88,59 @@ async def process_barcode(message: types.Message, state: FSMContext, db_manager:
             parse_mode="Markdown"
         )
 
+@router.message(ScanStates.waiting_for_barcode, F.photo | F.document)
+async def process_barcode_from_image(message: types.Message, state: FSMContext, bot: Bot, db_manager: DatabaseManager):
+    """
+    Rasm yoki Fayl (document) ichidagi bar-kodni skanerlaydi.
+    """
+    await message.answer("Rasm qabul qilindi, bar-kod skanerlanmoqda...")
+    
+    try:
+        # 1. Fayl ID ni olish
+        if message.photo:
+            file_id = message.photo[-1].file_id
+        elif message.document and message.document.mime_type.startswith('image'):
+            file_id = message.document.file_id
+        else:
+            await message.answer("Rasm fayl turi qo'llab-quvvatlanmaydi. Faqat rasm yuboring.")
+            return
 
+        # 2. Faylni yuklab olish
+        file = await bot.get_file(file_id)
+        file_content = await bot.download_file(file.file_path) # BytesIO obyekti
+        
+        # 3. Bar-kodni o'qish (pyzbar va PIL)
+        img = Image.open(file_content)
+        decoded_objects = decode(img)
+        
+        if not decoded_objects:
+            await message.answer("❌ Uzr, rasmda hech qanday bar-kod topilmadi. Yoki sifati past.")
+            return
+
+        # 4. Bar-kod matnini olish
+        # Birinchi topilgan bar-kodni olamiz
+        barcode = decoded_objects[0].data.decode('utf-8')
+        
+        # 5. Asosiy matn handler funksiyasini chaqirish
+        # Bu yerda siz yuqoridagi 'process_barcode' funksiyasining mantiqini takrorlashingiz kerak bo'ladi.
+        # yoki yaxshisi:
+        
+        # message.text ni so'zma-so'z o'zgartirish o'rniga, mantiqni alohida yordamchi funksiyaga ajratish yaxshiroq.
+        # Lekin tez hal qilish uchun:
+        
+        # Matn handleriga o'tish uchun message.text ni o'rnatish mumkin emas, 
+        # shuning uchun logikani shu yerda takrorlash yoki yordamchi funksiyadan foydalanish kerak.
+
+        # ... process_barcode funksiyasining barcha mantiqini (2-banddan 5-bandgacha) shu yerga ko'chiring
+        # Matn handleridagi "barcode = message.text.strip()" qatorini bu yerda
+        # "barcode = decoded_objects[0].data.decode('utf-8')" qatoriga almashtirasiz.
+
+        # Agar bu juda murakkab bo'lsa, avval bu handler uchun **`pyzbar`** ni o'rnatishingiz kerak.
+        
+    except Exception as e:
+        await message.answer(f"❌ Rasmni qayta ishlashda kutilmagan xato: {e}")
+        # Loglarga xatoni yozing
+        logging.error(f"BARCODE_IMAGE_ERROR: {e}")
 # =================================================================
 # CALLBACK HANDLERS (Tugmalarga javob)
 # =================================================================
